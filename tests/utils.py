@@ -405,7 +405,7 @@ class TranspileTestCase(TestCase):
                 js_out = self.runAsJavaScript(
                     code,
                     extra_code=extra_code,
-                    js=js,
+                    js=(js or None),
                     run_in_function=False,
                     args=args
                 )
@@ -431,7 +431,20 @@ class TranspileTestCase(TestCase):
         #==================================================
         if run_in_function:
             try:
+<<<<<<< HEAD
                 self.makeTempDir()
+=======
+                # Create the temp directory into which code will be placed
+                test_dir = os.path.join(os.path.dirname(__file__), 'temp')
+                try:
+                    os.mkdir(test_dir)
+                except FileExistsError:
+                    pass
+
+                for mod, payload in (js or {}).items():
+                    with open(os.path.join(test_dir, '%s.js' % mod), 'w') as jsfile:
+                        jsfile.write(adjust(payload))
+>>>>>>> js arguments in assertJavaScriptExecution can be None
 
                 # Run the code as JavaScript.
                 js_out = self.runAsJavaScript(
