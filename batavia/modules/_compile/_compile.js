@@ -1,3 +1,5 @@
+var _PyParser_Grammar = require('./ast/graminit');
+
 var ErrorDetail = function(filename) {
     this.error = E_OK;
     this.lineno = 0;
@@ -28,18 +30,19 @@ var PyErr_SetObject = function(exception, o) {
                      exception);
         return;
     }
-    exc_value = tstate->exc_value;
-    if (exc_value != NULL && exc_value != Py_None) {
+    exc_value = tstate.exc_value;
+    if (exc_value != null && exc_value != Py_None) {
         /* Implicit exception chaining */
-        if (value == NULL || !PyExceptionInstance_Check(value)) {
+        if (value == null || !PyExceptionInstance_Check(value)) {
             /* We must normalize the value right now */
-            PyObject *args, *fixed_value;
+            var args = null;
+            var fixed_value = null;
 
             /* Issue #23571: PyEval_CallObject() must not be called with an
                exception set */
             PyErr_Clear();
 
-            if (value == NULL || value == Py_None)
+            if (value == null || value == Py_None)
                 args = PyTuple_New(0);
             else if (PyTuple_Check(value)) {
                 Py_INCREF(value);
@@ -48,7 +51,7 @@ var PyErr_SetObject = function(exception, o) {
             else
                 args = PyTuple_Pack(1, value);
             fixed_value = args ?
-                PyEval_CallObject(exception, args) : NULL;
+                PyEval_CallObject(exception, args) : null;
             if (fixed_value == NULL)
                 return;
             value = fixed_value;
@@ -58,7 +61,8 @@ var PyErr_SetObject = function(exception, o) {
            usually very short. Sensitive readers may try
            to inline the call to PyException_GetContext. */
         if (exc_value != value) {
-            PyObject *o = exc_value, *context;
+            var o = exc_value;
+            var ontext = null;
             while ((context = PyException_GetContext(o))) {
                 if (context == value) {
                     PyException_SetContext(o, NULL);
@@ -158,7 +162,7 @@ var err_input = function(err) {
         msg = "unknown parsing error";
         break;
     }
-    /* err->text may not be UTF-8 in case of decoding errors.
+    /* err.text may not be UTF-8 in case of decoding errors.
        Explicitly convert to an object. */
     if (!err.text) {
         errtext = null;
@@ -308,7 +312,7 @@ batavia.modules._compile = {
                 c = tok.buf[tok.cur];
 
                 for (;;) {
-                    while (c == ' ' || c == '\t' || c == '\n' || c == '\014') {
+                    while (c == ' ' || c == '\t' || c == '\n' || c == '\x0c') {
                         c = tok.buf[++tok.cur];
                     }
 
@@ -346,7 +350,7 @@ batavia.modules._compile = {
             }
             err_ret += '\0';
         } else if (tok.encoding != null) {
-            /* 'nodes->n_str' uses PyObject_*, while 'tok.encoding' was
+            /* 'nodes.n_str' uses PyObject_*, while 'tok.encoding' was
              * allocated using PyMem_
              */
             var r = new batavia.modules._compile.Node(encoding_decl);

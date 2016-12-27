@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
 
+import re
 
-
-with open('ast/graminit.c') as fin:
+with open('batavia/modules/_compile/ast/graminit.c') as fin:
     text = fin.read()
 
 lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
 
 processing = None
-out = ''
+out = '''
+var Label = require('./grammar').Label;
+var Arc = require('./grammar').Arc;
+var State = require('./grammar').Arc;
+var DFA = require('./grammar').Arc;
+var Grammar = require('./grammar').Arc;
+'''
+
+octal = re.compile(r'\\[0-3][0-7][0-7]')
+
+def convert_octal(text):
+    def convert(o):
+        o = o.group(0)
+        return '\\x' + '%02x' % (int(o[1:4], 8))
+    return octal.sub(convert, text)
 
 for line in lines:
     if line.startswith('/*') or line.startswith('//'):
@@ -47,14 +61,15 @@ for line in lines:
     if processing == 'dfa':
         if line.startswith('{'):
             a, b, c, d, e = line[1:-1].split(', ')
-            out += 'new DFA(%d, %s, %d, %s,' % (int(a), repr(b), int(c), e)
+            b = b[1:-1]
+            out += 'new DFA(%d, "%s", %d, %s,' % (int(a), b, int(c), e)
             continue
         elif line.endswith('},'):
-            out += '%s),' % (line[:-2])
+            out += '%s),' % (convert_octal(line[:-2]))
             continue
         elif line.endswith('};'):
             processing = None
-            out = out[:-1]
+            out = convert_octal(out[:-1])
             out += '];\n'
             continue
     if processing == 'label':
@@ -72,4 +87,5 @@ for line in lines:
         out += '\nvar _PyParser_Grammar = new Grammar(dfas, labels);\n';
         break
     assert False # shouldn't be able to reach here
+out += 'module.exports = _PyParser_Grammar';
 print(out)

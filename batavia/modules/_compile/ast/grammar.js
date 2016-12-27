@@ -43,3 +43,11 @@ var Grammar = function(dfas, labels) {
 Grammar.prototype.findDFA = function(type) {
     return this.g_dfa[type - batavia.modules._compile.NT_OFFSET];
 };
+
+module.exports = {
+  Label: Label,
+  Arc: Arc,
+  State: State,
+  DFA: DFA,
+  Grammar: Grammar
+}
