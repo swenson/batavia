@@ -84,7 +84,7 @@ class EmitVisitor(asdl.VisitorBase):
         name = str(name)
         if name in self.identifiers:
             return
-        self.emit("var %s = '%s';" % (name, name), 0)
+        self.emit("var %s = '%s';" % (fix_name(name), name), 0)
         self.identifiers.add(name)
 
     def emit(self, s, depth, reflow=True):
@@ -268,6 +268,13 @@ class PrototypeVisitor(EmitVisitor):
                            self.get_args(prod.attributes),
                            union=False)
 
+def fix_name(name):
+    # reserved
+    if name == 'arguments':
+        return '_arguments'
+    elif name == 'module':
+        return '_module';
+    return name
 
 class FunctionVisitor(PrototypeVisitor):
     """Visitor to generate constructor functions for AST."""
@@ -277,11 +284,11 @@ class FunctionVisitor(PrototypeVisitor):
             self.emit(s, depth, reflow)
         argstr = ", ".join(["%s" % aname
                             for _, aname, opt in args + attrs])
-        emit("var %s = function(%s) {" % (name, argstr))
+        emit("var %s = function(%s) {" % (fix_name(name), argstr))
         for argtype, argname, opt in args:
             if not opt and argtype != "int":
                 emit("if (!%s) {" % argname, 1)
-                emit("throw new batavia.builtins.ValueError(", 2)
+                emit("throw new exceptions.ValueError(", 2)
                 msg = "field %s is required for %s" % (argname, name)
                 emit('                "%s");' % msg,
                      2, reflow=False)
@@ -362,7 +369,7 @@ class Obj2ModVisitor(PickleVisitor):
     def simpleSum(self, sum, name):
         self.funcHeader(name)
         for t in sum.types:
-            line = "isinstance = batavia.isinstance(obj, %s_type);"
+            line = "isinstance = types.isinstance(obj, %s_type);"
             self.emit(line % (t.name,), 1)
             self.emit("if (isinstance == -1) {", 1)
             self.emit("return 1;", 2)
@@ -390,7 +397,7 @@ class Obj2ModVisitor(PickleVisitor):
         for a in sum.attributes:
             self.visitField(a, name, sum=sum, depth=1)
         for t in sum.types:
-            line = "isinstance = batavia.isinstance(obj, %s_type);"
+            line = "isinstance = types.isinstance(obj, %s_type);"
             self.emit(line % (t.name,), 1)
             self.emit("if (isinstance == -1) {", 1)
             self.emit("return 1;", 2)
@@ -402,7 +409,7 @@ class Obj2ModVisitor(PickleVisitor):
             for f in t.fields:
                 self.visitField(f, t.name, sum=sum, depth=2)
             args = [f.name for f in t.fields] + [a.name for a in sum.attributes]
-            self.emit("out = %s(%s);" % (t.name, self.buildArgs(args)), 2)
+            self.emit("out = %s(%s);" % (fix_name(t.name), self.buildArgs(args)), 2)
             self.emit("if (out == null) return 1;", 2)
             self.emit("return 0;", 2)
             self.emit("}", 1)
@@ -432,7 +439,7 @@ class Obj2ModVisitor(PickleVisitor):
             self.visitField(a, name, prod=prod, depth=1)
         args = [f.name for f in prod.fields]
         args.extend([a.name for a in prod.attributes])
-        self.emit("out = %s(%s);" % (name, self.buildArgs(args)), 1)
+        self.emit("out = %s(%s);" % (fix_name(name), self.buildArgs(args)), 1)
         self.emit("return 0;", 1)
         self.emit("};", 0)
         self.emit("", 0)
@@ -473,7 +480,7 @@ class Obj2ModVisitor(PickleVisitor):
         self.emit("if (tmp == null) return 1;", depth+1)
         if field.seq:
             self.emit("if (!PyList_Check(tmp)) {", depth+1)
-            self.emit("throw new batavia.builtins.TypeError(\"%s field \\\"%s\\\" must "
+            self.emit("throw new exceptions.TypeError(\"%s field \\\"%s\\\" must "
                       "be a list, not a \" + tmp.ob_type.tp_name);" %
                       (name, field.name),
                       depth+2, reflow=False)
@@ -501,7 +508,7 @@ class Obj2ModVisitor(PickleVisitor):
         self.emit("} else {", depth)
         if not field.opt:
             message = "required field \\\"%s\\\" missing from %s" % (field.name, name)
-            format = "throw new batavia.builtins.TypeError(\"%s\");"
+            format = "throw new exceptions.TypeError(\"%s\");"
             self.emit(format % message, depth+1, reflow=False)
             self.emit("return 1;", depth+1)
         else:
@@ -575,12 +582,18 @@ class PyTypesVisitor(PickleVisitor):
     def visitModule(self, mod):
         self.emit("""
 
+var exceptions = require('../../../core').exceptions;
+var types = require('../../../core').types;
+var Type = require('../../../core').Type;
+
+var ast = {};
+
 var AST_object = function() {
-    this.dict = new batavia.types.Dict();
+    this.dict = new types.Dict();
 };
 
 AST_object.prototype = Object.create(Object.prototype);
-AST_object.prototype.__class__ = new batavia.types.Type('AST_object');
+AST_object.prototype.__class__ = new Type('AST_object');
 
 AST_object.prototype.traverse = function(visit, arg) {
     Py_VISIT(this.dict);
@@ -609,7 +622,7 @@ AST_object.prototype.init = function(args, kwarg) {
     res = 0; /* if no error occurs, this stays 0 to the end */
     if (PyTuple_GET_SIZE(args) > 0) {
         if (numfields != PyTuple_GET_SIZE(args)) {
-            throw new batavia.builtins.TypeError(Py_TYPE(self).tp_name + " constructor takes " + (numfields == 0 ? "" : "either 0 or ") +
+            throw new exceptions.TypeError(Py_TYPE(self).tp_name + " constructor takes " + (numfields == 0 ? "" : "either 0 or ") +
                          numfield + " positional argument " + (numfields == 1 ? "" : "s"));
             res = -1;
             return res;
@@ -655,20 +668,17 @@ AST_object.prototype.reduce = function(unused) {
     return Py_BuildValue("O()", Py_TYPE(self));
 };
 
+ast.AST_object = AST_object;
+
 var make_type = function(type, base, fields) {
-    var fnames = new batavia.types.Tuple(fields || []);
-    return new batavia.types.Type('Tokenizer', base, fields);
+    var fnames = new types.Tuple(fields || []);
+    return new Type('Tokenizer', base, fields);
 };
 
 var add_attributes = function(type, attrs) {
-    var l = new batavia.types.Tuple(attrs || []);
+    var l = new types.Tuple(attrs || []);
     type._attributes = l;
 };
-
-
-
-batavia.modules.ast = {};
-batavia.modules.ast.AST_object = AST_object;
 
 /* Conversion AST -> Python */
 
@@ -690,14 +700,14 @@ var ast2obj_list = function(seq, func) {
 };
 
 var ast2obj_int = function(b) {
-    return new batavia.types.Int(b);
+    return new types.Int(b);
 };
 
 /* Conversion Python -> AST */
 
 var obj2ast_singleton = function(obj) {
-    if (obj != null && !batavia.isinstance(obj, batavia.types.Bool)) {
-        throw new batavia.builtins.ValueError("AST singleton must be True, False, or None");
+    if (obj != null && !types.isinstance(obj, types.Bool)) {
+        throw new exceptions.ValueError("AST singleton must be True, False, or None");
     }
     return obj;
 };
@@ -711,35 +721,35 @@ var obj2ast_constant = function(obj) {
 };
 
 var obj2ast_identifier = function(obj) {
-    if (!batavia.isinstance(obj, batavia.types.Str) && obj != null) {
-        throw new batavia.builtins.TypeError("AST identifier must be of type str");
+    if (!types.isinstance(obj, types.Str) && obj != null) {
+        throw new exceptions.TypeError("AST identifier must be of type str");
     }
     return obj2ast_object(obj);
 };
 
 var obj2ast_string = function(obj) {
-    if (!batavia.isinstance(obj, [batavia.types.Bytes, batavia.types.Str])) {
-        throw new batavia.builtins.TypeError("AST string must be of type str");
+    if (!types.isinstance(obj, [types.Bytes, types.Str])) {
+        throw new exceptions.TypeError("AST string must be of type str");
     }
     return obj2ast_object(obj);
 }
 
 var obj2ast_bytes = function(obj) {
-    if (!batavia.isinstance(obj, batavia.types.Bytes)) {
-        throw new batavia.builtins.TypeError("AST bytes must be of type bytes");
+    if (!types.isinstance(obj, types.Bytes)) {
+        throw new exceptions.TypeError("AST bytes must be of type bytes");
     }
     return obj2ast_object(obj);
 };
 
 var obj2ast_int = function(obj) {
-    if (!batavia.isinstance(obj, [batavia.types.Int])) {
-        throw new batavia.builtins.ValueError("invalid integer value: ", obj);
+    if (!types.isinstance(obj, [types.Int])) {
+        throw new exceptions.ValueError("invalid integer value: ", obj);
     }
     return obj.int32();
 };
 
 var add_ast_fields = function() {
-    var empty_tuple = new batavia.types.Tuple();
+    var empty_tuple = new types.Tuple();
     AST_object._fields = empty_tuple;
     AST_object._attributed = empty_tuple;
 };
@@ -1012,7 +1022,7 @@ var PyAST_obj2mod = function(ast, mode) {
     if (isinstance == -1)
         return null;
     if (!isinstance) {
-        throw new batavia.builtins.TypeError("expected " + req_name[mode] + " node, got " + Py_TYPE(ast).tp_name);
+        throw new exceptions.TypeError("expected " + req_name[mode] + " node, got " + Py_TYPE(ast).tp_name);
     }
     if (obj2ast_mod(ast, res) != 0) {
         return null;
@@ -1025,12 +1035,12 @@ var ast_check = function(obj) {
     if (!init_types()) {
         return -1;
     }
-    return batavia.isinstance(obj, AST_object);
+    return types.isinstance(obj, AST_object);
 };
 
-batavia.modules.ast.ast_check = ast_check;
+ast.ast_check = ast_check;
 
-}()); // don't execute the module yet until it works better
+module.exports = ast;
 """
 
 class ChainOfVisitors:
@@ -1043,8 +1053,6 @@ class ChainOfVisitors:
             v.emit("", 0)
 
 common_msg = """/* File automatically generated by %s. */
-
-(function() {
 """
 
 def main(srcfile, dump_module=False):

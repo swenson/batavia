@@ -1,4 +1,23 @@
+/*
+ * Python compiler internals.
+ */
+var tokenizer = require('./tokenizer');
+var types = require('../../types');
+var exceptions = require('../../core/exceptions');
 var _PyParser_Grammar = require('./ast/graminit');
+var ast = require('./ast/Python-ast');
+
+var _compile = {
+    '__doc__': "",
+    '__file__': "batavia/modules/_compile/_compile.js",
+    '__name__': "_compile",
+    '__package__': "",
+};
+
+_compile.Py_single_input = new types.Int(256);
+_compile.Py_file_input = new types.Int(257);
+_compile.Py_eval_input = new types.Int(258);
+
 
 var ErrorDetail = function(filename) {
     this.error = E_OK;
@@ -87,58 +106,58 @@ var err_input = function(err) {
     var msg_obj = null;
     var msg = null;
     var offset = err.offset;
-    errtype = batavia.builtins.SyntaxError;
+    errtype = exceptions.SyntaxError;
     switch (err.error) {
-    case batavia.modules._compile.E_ERROR:
+    case _compile.E_ERROR:
         return;
-    case batavia.modules._compile.E_SYNTAX:
-        errtype = batavia.builtins.IndentationError;
-        if (err.expected == batavia.modules._compile.INDENT)
+    case _compile.E_SYNTAX:
+        errtype = exceptions.IndentationError;
+        if (err.expected == _compile.INDENT)
             msg = "expected an indented block";
-        else if (err.token == batavia.modules._compile.INDENT)
+        else if (err.token == _compile.INDENT)
             msg = "unexpected indent";
-        else if (err.token == batavia.modules._compile.DEDENT)
+        else if (err.token == _compile.DEDENT)
             msg = "unexpected unindent";
         else {
-            errtype = batavia.builtins.SyntaxError;
+            errtype = exceptions.SyntaxError;
             msg = "invalid syntax";
         }
         break;
-    case batavia.modules._compile.E_TOKEN:
+    case _compile.E_TOKEN:
         msg = "invalid token";
         break;
-    case batavia.modules._compile.E_EOFS:
+    case _compile.E_EOFS:
         msg = "EOF while scanning triple-quoted string literal";
         break;
-    case batavia.modules._compile.E_EOLS:
+    case _compile.E_EOLS:
         msg = "EOL while scanning string literal";
         break;
-    case batavia.modules._compile.E_INTR:
+    case _compile.E_INTR:
         if (!PyErr_Occurred())
-            PyErr_SetNone(batavia.builtins.KeyboardInterrupt);
+            PyErr_SetNone(exceptions.KeyboardInterrupt);
         return;
-    case batavia.modules._compile.E_NOMEM:
-        PyErr_SetNone(batavia.builtins.MemoryError);
+    case _compile.E_NOMEM:
+        PyErr_SetNone(exceptions.MemoryError);
         return;
-    case batavia.modules._compile.E_EOF:
+    case _compile.E_EOF:
         msg = "unexpected EOF while parsing";
         break;
-    case batavia.modules._compile.E_TABSPACE:
-        errtype = batavia.builtins.TabError;
+    case _compile.E_TABSPACE:
+        errtype = exceptions.TabError;
         msg = "inconsistent use of tabs and spaces in indentation";
         break;
-    case batavia.modules._compile.E_OVERFLOW:
+    case _compile.E_OVERFLOW:
         msg = "expression too long";
         break;
-    case batavia.modules._compile.E_DEDENT:
-        errtype = batavia.builtins.IndentationError;
+    case _compile.E_DEDENT:
+        errtype = exceptions.IndentationError;
         msg = "unindent does not match any outer indentation level";
         break;
-    case batavia.modules._compile.E_TOODEEP:
-        errtype = batavia.builtins.IndentationError;
+    case _compile.E_TOODEEP:
+        errtype = exceptions.IndentationError;
         msg = "too many levels of indentation";
         break;
-    case batavia.modules._compile.E_DECODE: {
+    case _compile.E_DECODE: {
         var f = PyErr_Fetch();
         var value = f[1];
         msg = "unknown decode error";
@@ -147,14 +166,14 @@ var err_input = function(err) {
         }
         break;
     }
-    case batavia.modules._compile.E_LINECONT:
+    case _compile.E_LINECONT:
         msg = "unexpected character after line continuation character";
         break;
 
-    case batavia.modules._compile.E_IDENTIFIER:
+    case _compile.E_IDENTIFIER:
         msg = "invalid character in identifier";
         break;
-    case batavia.modules._compile.E_BADSINGLE:
+    case _compile.E_BADSINGLE:
         msg = "multiple statements found while compiling a single statement";
         break;
     default:
@@ -183,188 +202,193 @@ var err_input = function(err) {
 /*
  * Python compiler internals.
  */
-batavia.modules._compile = {
-    file_input: function() {
-        throw new batavia.builtins.NotImplementedError("_compile.file_input is not implemented yet");
-    },
-    eval_input: function() {
-        throw new batavia.builtins.NotImplementedError("_compile.eval_input is not implemented yet");
-    },
-    single_input: function() {
-        throw new batavia.builtins.NotImplementedError("_compile.single_input is not implemented yet");
-    },
-    ast_check: function(obj) {
-        return batavia.modules.ast.ast_check(obj);
-    },
-    compile_string_object: function(str, filename, compile_mode, cf, optimize) {
-          var co = null;
-          var mod = null;
-          mod = batavia.modules._compile.ast_from_string_object(str, filename, compile_mode, cf);
-          co = batavia.modules._compile.ast_compile_object(mod, filename, cf, optimize);
-          return co;
-    },
-    ast_obj2mod: function(source, compile_mode) {
-        throw new batavia.builtins.NotImplementedError("_compile.ast_obj2mod is not implemented yet");
-    },
-    ast_validate: function(mod) {
-        throw new batavia.builtins.NotImplementedError("_compile.ast_validate is not implemented yet");
-    },
-    ast_compile_object: function(mod, filename, cf, optimize) {
-        throw new batavia.builtins.NotImplementedError("_compile.ast_compile_object is not implemented yet");
-    },
-    ast_from_string_object: function(str, filename, start, flags) {
+
+_compile.file_input = function() {
+    throw new exceptions.NotImplementedError("_compile.file_input is not implemented yet");
+}
+
+_compile.eval_input = function() {
+    throw new exceptions.NotImplementedError("_compile.eval_input is not implemented yet");
+}
+
+_compile.single_input = function() {
+    throw new exceptions.NotImplementedError("_compile.single_input is not implemented yet");
+}
+
+_compile.ast_check = function(obj) {
+    return ast.ast_check(obj);
+}
+
+_compile.compile_string_object = function(str, filename, compile_mode, cf, optimize) {
+      var co = null;
       var mod = null;
-      var localflags = {};
-      var iflags = 0;
+      mod = _compile.ast_from_string_object(str, filename, compile_mode, cf);
+      co = _compile.ast_compile_object(mod, filename, cf, optimize);
+      return co;
+}
 
-      var ret = batavia.modules._compile.parse_string_object(str, filename,
-                                           _PyParser_Grammar, start, iflags);
-      var n = ret[0];
-      var err = ret[1];
+_compile.ast_obj2mod = function(source, compile_mode) {
+    throw new exceptions.NotImplementedError("_compile.ast_obj2mod is not implemented yet");
+}
 
-      if (flags == null) {
-          localflags.cf_flags = 0;
-          flags = localflags;
-      }
-      if (n) {
-          flags.cf_flags |= iflags & PyCF_MASK;
-          mod = batavia.modules._compile.ast_from_node_object(n, flags, filename);
-      } else {
-          err_input(err);
-          mod = null;
-      }
-      return mod;
-    },
+_compile.ast_validate = function(mod) {
+    throw new exceptions.NotImplementedError("_compile.ast_validate is not implemented yet");
+}
 
-    parse_string_object: function(s, filename, grammar, start, iflags) {
-        var exec_input = start.__eq__(batavia.modules._compile.Py_file_input).valueOf();
-        var err_ret = new ErrorDetail(filename);
+_compile.ast_compile_object = function(mod, filename, cf, optimize) {
+    throw new exceptions.NotImplementedError("_compile.ast_compile_object is not implemented yet");
+}
 
-        var tok = new batavia.modules._compile.Tokenizer(s, exec_input);
-        tok.filename = err_ret.filename;
-        var ret = batavia.modules._compile.parsetok(tok, grammar, start, err_ret, iflags);
-        return [ret, err_ret];
-    },
+_compile.ast_from_string_object = function(str, filename, start, flags) {
+  var mod = null;
+  var localflags = {};
+  var iflags = 0;
 
-    parsetok: function(tok, g, start, err_ret, flags) {
-        var n = null;
-        var started = 0;
+  var ret = _compile.parse_string_object(str, filename,
+                                       _PyParser_Grammar, start, iflags);
+  var n = ret[0];
+  var err = ret[1];
 
-        var ps = new Parser(g, start);
+  if (flags == null) {
+      localflags.cf_flags = 0;
+      flags = localflags;
+  }
+  if (n) {
+      flags.cf_flags |= iflags & PyCF_MASK;
+      mod = _compile.ast_from_node_object(n, flags, filename);
+  } else {
+      err_input(err);
+      mod = null;
+  }
+  return mod;
+}
 
-        for (;;) {
-            var result = tok.get_token();
-            var type = result[0];
-            var a = result[1];
-            var b = result[2];
+_compile.parse_string_object = function(s, filename, grammar, start, iflags) {
+    var exec_input = start.__eq__(_compile.Py_file_input).valueOf();
+    var err_ret = new ErrorDetail(filename);
 
-            if (type == batavia.modules._compile.ERRORTOKEN) {
-                err_ret.error = tok.done;
-                break;
-            }
+    var tok = new _compile.Tokenizer(s, exec_input);
+    tok.filename = err_ret.filename;
+    var ret = _compile.parsetok(tok, grammar, start, err_ret, iflags);
+    return [ret, err_ret];
+},
 
-            if (type == batavia.modules._compile.ENDMARKER && started) {
-                type = batavia.modules._compile.NEWLINE; /* Add an extra newline */
-                started = 0;
-                /* Add the right number of dedent tokens,
-                   except if a certain flag is given --
-                   codeop.py uses this. */
-                if (tok.indent) {
-                    tok.pendin = -tok.indent;
-                    tok.indent = 0;
-                }
-            } else {
-                started = 1;
-            }
-            var len = b - a;
-            var str = '';
-            if (len > 0) {
-              str = tok.buf.slice(a, b);
-            }
-            str += '\0';
+_compile.parsetok = function(tok, g, start, err_ret, flags) {
+    var n = null;
+    var started = 0;
 
-            var col_offset;
-            if (a >= tok.line_start) {
-                col_offset = a - tok.line_start;
-            } else {
-                col_offset = -1;
-            }
+    var ps = new Parser(g, start);
 
-            err_ret.error = ps.add_token(type, str, tok.lineno, col_offset, err_ret.expected)
-            if (err_ret.error != batavia.modules._compile.E_OK) {
-                if (err_ret.error != batavia.modules._compile.E_DONE) {
-                    err_ret.token = type;
-                }
-                break;
-            }
+    for (;;) {
+        var result = tok.get_token();
+        var type = result[0];
+        var a = result[1];
+        var b = result[2];
+
+        if (type == _compile.ERRORTOKEN) {
+            err_ret.error = tok.done;
+            break;
         }
 
-        if (err_ret.error == batavia.modules._compile.E_DONE) {
-            n = ps.p_tree;
-            ps.p_tree = null;
-
-            /* Check that the source for a single input statement really
-               is a single statement by looking at what is left in the
-               buffer after parsing.  Trailing whitespace and comments
-               are OK.  */
-            if (start == single_input) {
-                cur = tok.cur;
-                c = tok.buf[tok.cur];
-
-                for (;;) {
-                    while (c == ' ' || c == '\t' || c == '\n' || c == '\x0c') {
-                        c = tok.buf[++tok.cur];
-                    }
-
-                    if (!c) {
-                        break;
-                    }
-
-                    if (c != '#') {
-                        err_ret.error = batavia.modules._compile.E_BADSINGLE;
-                        n = null;
-                        break;
-                    }
-
-                    /* Suck up comment. */
-                    while (c && c != '\n') {
-                        c = tok.buf[++tok.cur];
-                    }
-                }
+        if (type == _compile.ENDMARKER && started) {
+            type = _compile.NEWLINE; /* Add an extra newline */
+            started = 0;
+            /* Add the right number of dedent tokens,
+               except if a certain flag is given --
+               codeop.py uses this. */
+            if (tok.indent) {
+                tok.pendin = -tok.indent;
+                tok.indent = 0;
             }
         } else {
-            n = null;
+            started = 1;
+        }
+        var len = b - a;
+        var str = '';
+        if (len > 0) {
+          str = tok.buf.slice(a, b);
+        }
+        str += '\0';
+
+        var col_offset;
+        if (a >= tok.line_start) {
+            col_offset = a - tok.line_start;
+        } else {
+            col_offset = -1;
         }
 
-        if (n == null) {
-            if (tok.done == batavia.modules._compile.E_EOF) {
-                err_ret.error = batavia.modules._compile.E_EOF;
+        err_ret.error = ps.add_token(type, str, tok.lineno, col_offset, err_ret.expected)
+        if (err_ret.error != _compile.E_OK) {
+            if (err_ret.error != _compile.E_DONE) {
+                err_ret.token = type;
             }
-            err_ret.lineno = tok.lineno;
-            var len;
-            err_ret.offset = tok.cur;
-            len = tok.inp;
-            err_ret.text = '';
-            if (len > 0) {
-                err_ret.text = tok.buf.slice(0, len).join('');
-            }
-            err_ret += '\0';
-        } else if (tok.encoding != null) {
-            /* 'nodes.n_str' uses PyObject_*, while 'tok.encoding' was
-             * allocated using PyMem_
-             */
-            var r = new batavia.modules._compile.Node(encoding_decl);
-            r.n_str = tok.encoding;
-            tok.encoding = null;
-            r.n_nchildren = 1;
-            r.n_child = n;
-            n = r;
+            break;
         }
+    }
 
-        return n;
-    },
+    if (err_ret.error == _compile.E_DONE) {
+        n = ps.p_tree;
+        ps.p_tree = null;
 
-    Py_single_input: new batavia.types.Int(256),
-    Py_file_input: new batavia.types.Int(257),
-    Py_eval_input: new batavia.types.Int(258)
-};
+        /* Check that the source for a single input statement really
+           is a single statement by looking at what is left in the
+           buffer after parsing.  Trailing whitespace and comments
+           are OK.  */
+        if (start == single_input) {
+            cur = tok.cur;
+            c = tok.buf[tok.cur];
+
+            for (;;) {
+                while (c == ' ' || c == '\t' || c == '\n' || c == '\x0c') {
+                    c = tok.buf[++tok.cur];
+                }
+
+                if (!c) {
+                    break;
+                }
+
+                if (c != '#') {
+                    err_ret.error = _compile.E_BADSINGLE;
+                    n = null;
+                    break;
+                }
+
+                /* Suck up comment. */
+                while (c && c != '\n') {
+                    c = tok.buf[++tok.cur];
+                }
+            }
+        }
+    } else {
+        n = null;
+    }
+
+    if (n == null) {
+        if (tok.done == _compile.E_EOF) {
+            err_ret.error = _compile.E_EOF;
+        }
+        err_ret.lineno = tok.lineno;
+        var len;
+        err_ret.offset = tok.cur;
+        len = tok.inp;
+        err_ret.text = '';
+        if (len > 0) {
+            err_ret.text = tok.buf.slice(0, len).join('');
+        }
+        err_ret += '\0';
+    } else if (tok.encoding != null) {
+        /* 'nodes.n_str' uses PyObject_*, while 'tok.encoding' was
+         * allocated using PyMem_
+         */
+        var r = new _compile.Node(encoding_decl);
+        r.n_str = tok.encoding;
+        tok.encoding = null;
+        r.n_nchildren = 1;
+        r.n_child = n;
+        n = r;
+    }
+
+    return n;
+}
+
+module.exports = _compile;
